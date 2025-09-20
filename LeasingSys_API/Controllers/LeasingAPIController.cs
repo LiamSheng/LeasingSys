@@ -1,5 +1,5 @@
 using LeasingSys_API.Data;
-using LeasingSys_API.Models;
+using LeasingSys_API.Logging;
 using LeasingSys_API.Models.DTO;
 using Microsoft.AspNetCore.JsonPatch;
 using Microsoft.AspNetCore.Mvc;
@@ -11,10 +11,18 @@ namespace LeasingSys_API.Controllers;
 [ApiController]
 public class LeasingAPIController : ControllerBase // 继承 Controller 则会额外支持 MVC 特性
 {
+    private readonly ILogging _logger;
+
+    public LeasingAPIController(ILogging logger)
+    {
+        this._logger = logger;
+    }
+
     [HttpGet]
     [ProducesResponseType(StatusCodes.Status200OK)]
     public ActionResult<IEnumerable<LeasingDTO>> GetLeasing()
     {
+        _logger.Log("Getting all leasing info.", "");
         // ActionResult 类型可以灵活控制 Ok(data)、NotFound()、BadRequest()、CreatedAtRoute().
         return Ok(LeasingOffice.LeasingList);
     }
@@ -28,6 +36,7 @@ public class LeasingAPIController : ControllerBase // 继承 Controller 则会�
     {
         if (id <= 0)
         {
+            _logger.Log("id must be greater than or equal to 0.", "error");
             return BadRequest();
         }
 
