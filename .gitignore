@@ -3,3 +3,39 @@ obj/
 /packages/
 riderModule.iml
 /_ReSharper.Caches/
+
+# # # # # # # # # # # # # #
+# C#/.NET Core template #
+# # # # # # # # # # # # #
+
+# 1. JetBrains Rider/ReSharper IDE files (from your screenshot)
+# -----------------------------------------------------------
+.idea/
+*.DotSettings.user
+
+
+# 2. Log files (from your screenshot)
+# ----------------------------------
+log/
+*.log
+*.txt
+
+
+# 3. Standard .NET build artifacts
+# --------------------------------
+[Bb]in/
+[Oo]bj/
+
+
+# 4. OS-generated files
+# ---------------------
+.DS_Store
+Thumbs.db
+
+
+# 5. Other common ignores
+# -----------------------
+*.suo
+*.user
+*.csproj.user
+LeasingSys.sln.DotSettings.user

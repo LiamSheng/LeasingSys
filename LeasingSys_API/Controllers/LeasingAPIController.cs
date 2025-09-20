@@ -11,10 +11,18 @@ namespace LeasingSys_API.Controllers;
 [ApiController]
 public class LeasingAPIController : ControllerBase // 继承 Controller 则会额外支持 MVC 特性
 {
+    private readonly ILogger<LeasingAPIController> _logger;
+
+    public LeasingAPIController(ILogger<LeasingAPIController> logger)
+    {
+        this._logger = logger;
+    }
+
     [HttpGet]
     [ProducesResponseType(StatusCodes.Status200OK)]
     public ActionResult<IEnumerable<LeasingDTO>> GetLeasing()
     {
+        _logger.LogInformation("Getting All Leasing");
         // ActionResult 类型可以灵活控制 Ok(data)、NotFound()、BadRequest()、CreatedAtRoute().
         return Ok(LeasingOffice.LeasingList);
     }
@@ -28,6 +36,7 @@ public class LeasingAPIController : ControllerBase // 继承 Controller 则会�
     {
         if (id <= 0)
         {
+            _logger.LogError("Getting Leasing with id: {id}", id);
             return BadRequest();
         }
 

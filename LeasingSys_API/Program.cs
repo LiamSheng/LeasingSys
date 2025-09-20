@@ -1,3 +1,5 @@
+using Serilog;
+
 namespace LeasingSys_API;
 
 public class Program
@@ -7,6 +9,9 @@ public class Program
         var builder = WebApplication.CreateBuilder(args);
 
         // Add services to the container.
+        Log.Logger = new LoggerConfiguration().MinimumLevel.Debug().WriteTo
+            .File("log/leasing-log.txt", rollingInterval: RollingInterval.Day).CreateLogger();
+        builder.Host.UseSerilog(); // 使用 Serilog 而非内置的日志.
 
         // 如果客户端通过 Accept 请求头请求一个我们的 API 无法生成的数据格式，
         // 那么服务器将严格地返回一个 406 Not Acceptable 错误，而不是“自作主张”地返回一个默认格式（如 JSON）的数据.
