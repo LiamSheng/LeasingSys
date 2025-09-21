@@ -1,6 +1,10 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
 using LeasingSys_API.Data;
 using LeasingSys_API.Models;
 using LeasingSys_API.Models.DTO;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.JsonPatch;
 using Microsoft.AspNetCore.Mvc;
 
@@ -11,12 +15,19 @@ namespace LeasingSys_API.Controllers;
 [ApiController]
 public class LeasingAPIController : ControllerBase // 继承 Controller 则会额外支持 MVC 特性
 {
+    private readonly ApplicationDbContext _db;
+
+    public LeasingAPIController(ApplicationDbContext db)
+    {
+        this._db = db;
+    }
+
     [HttpGet]
     [ProducesResponseType(StatusCodes.Status200OK)]
     public ActionResult<IEnumerable<LeasingDTO>> GetLeasing()
     {
         // ActionResult 类型可以灵活控制 Ok(data)、NotFound()、BadRequest()、CreatedAtRoute().
-        return Ok(LeasingOffice.LeasingList);
+        return Ok(this._db.Leasing.ToList());
     }
 
     [HttpGet("{id:int}", Name = "GetLeasing")]
@@ -31,7 +42,7 @@ public class LeasingAPIController : ControllerBase // 继承 Controller 则会�
             return BadRequest();
         }
 
-        var leasingDto = LeasingOffice.LeasingList.FirstOrDefault(u => u.Id == id);
+        var leasingDto = this._db.Leasing.FirstOrDefault(u => u.Id == id);
         if (leasingDto == null)
         {
             return NotFound();
@@ -57,7 +68,7 @@ public class LeasingAPIController : ControllerBase // 继承 Controller 则会�
         // {
         //     return Ok(leasingDto);
         // }
-        if (LeasingOffice.LeasingList.FirstOrDefault(u => u.Name.ToLower() == leasingDto.Name.ToLower()) != null)
+        if (this._db.Leasing.FirstOrDefault(u => u.Name.ToLower() == leasingDto.Name.ToLower()) != null)
         {
             // 报错的时候会显示:
             // {
@@ -76,12 +87,23 @@ public class LeasingAPIController : ControllerBase // 继承 Controller 则会�
         {
             return StatusCode(StatusCodes.Status400BadRequest, leasingDto);
         }
+        // Id 交由 EFCore 管理.
+        //leasingDto.Id = this._db.Leasing.OrderByDescending(u => u.Id).FirstOrDefault()?.Id + 1 ?? 0;
 
-        leasingDto.Id = LeasingOffice.LeasingList.OrderByDescending(u => u.Id).FirstOrDefault()?.Id + 1 ?? 0;
-        LeasingOffice.LeasingList.Add(leasingDto);
-        // return Ok(leasingDto);
+        Leasing model = new Leasing() { };
+        model.Amenity = leasingDto.Amenity;
+        model.Details = leasingDto.Details;
+        model.ImageUrl = leasingDto.ImageUrl;
+        model.Name = leasingDto.Name;
+        model.Occupancy = leasingDto.Occupancy;
+        model.Rate = leasingDto.Rate;
+        model.Sqft = leasingDto.Sqft;
+
+        this._db.Leasing.Add(model);
+        this._db.SaveChanges();
 
         // CreatedAtRoute 会设置 201 状态码 
+        leasingDto.Id = model.Id;
         return CreatedAtRoute("GetLeasing", new { id = leasingDto.Id }, leasingDto);
     }
 
@@ -97,13 +119,14 @@ public class LeasingAPIController : ControllerBase // 继承 Controller 则会�
             return BadRequest();
         }
 
-        var leasingDto = LeasingOffice.LeasingList.FirstOrDefault(u => u.Id == id);
+        var leasingDto = this._db.Leasing.FirstOrDefault(u => u.Id == id);
         if (leasingDto == null)
         {
             return NotFound();
         }
 
-        LeasingOffice.LeasingList.Remove(leasingDto);
+        this._db.Leasing.Remove(leasingDto);
+        this._db.SaveChanges();
         return NoContent();
     }
 
@@ -141,24 +164,48 @@ public class LeasingAPIController : ControllerBase // 继承 Controller 则会�
             return BadRequest();
         }
 
-        var leasingToUpdate = LeasingOffice.LeasingList.FirstOrDefault(u => u.Id == productId);
-        if (leasingToUpdate is null)
+        // 1. 从数据库获取【正在被跟踪】的实体
+        var leasingFromDb = this._db.Leasing.FirstOrDefault(u => u.Id == productId);
+        if (leasingFromDb is null)
         {
             return NotFound();
         }
 
-        // [
-        //     {
-        //         "op": "replace",
-        //         "path": "/YourPropertyName",
-        //         "value": "Your New Value"
-        //     }
-        // ]
-        patchLeasingDto.ApplyTo(leasingToUpdate, ModelState);
+        // 2. 创建一个临时的 DTO，它的数据来自原始实体
+        //    这是应用补丁所必需的步骤
+        LeasingDTO leasingDto = new LeasingDTO()
+        {
+            Id = leasingFromDb.Id, // 别忘了复制 Id
+            Amenity = leasingFromDb.Amenity,
+            Details = leasingFromDb.Details,
+            ImageUrl = leasingFromDb.ImageUrl,
+            Name = leasingFromDb.Name,
+            Occupancy = leasingFromDb.Occupancy,
+            Rate = leasingFromDb.Rate,
+            Sqft = leasingFromDb.Sqft
+        };
+
+        // 3. 将补丁应用到【临时的 DTO】上
+        patchLeasingDto.ApplyTo(leasingDto, ModelState);
+
         if (!ModelState.IsValid)
         {
             return BadRequest(ModelState);
         }
+
+        // 4. 将 DTO 中被修改后的值，手动同步回【原始的、被跟踪的实体】
+        //    EF Core 会自动检测到这些属性的变化
+        leasingFromDb.Name = leasingDto.Name;
+        leasingFromDb.Details = leasingDto.Details;
+        leasingFromDb.Rate = leasingDto.Rate;
+        leasingFromDb.Sqft = leasingDto.Sqft;
+        leasingFromDb.Occupancy = leasingDto.Occupancy;
+        leasingFromDb.ImageUrl = leasingDto.ImageUrl;
+        leasingFromDb.Amenity = leasingDto.Amenity;
+        leasingFromDb.UpdatedDate = DateTime.Now; // 如果需要，更新修改时间
+
+        // 5. 保存更改。EF Core 知道要更新哪个实体以及哪些字段被修改了。
+        this._db.SaveChanges();
 
         return NoContent();
     }
