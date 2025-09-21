@@ -3,3 +3,41 @@ obj/
 /packages/
 riderModule.iml
 /_ReSharper.Caches/
+
+# 1. Standard .NET build artifacts
+# --------------------------------
+[Bb]in/
+[Oo]bj/
+
+
+# 2. JetBrains Rider/ReSharper IDE files
+# --------------------------------------
+.idea/
+*.DotSettings.user
+
+
+# 3. Log files
+# ------------
+log/
+*.log
+
+
+# 4. OS-generated files
+# ---------------------
+.DS_Store
+Thumbs.db
+
+
+# 5. Visual Studio/VS Code specific
+# ---------------------------------
+.vs/
+*.suo
+*.user
+*.csproj.user
+
+
+# 6. Local Database Files (新增内容)
+# -----------------------------------
+*.db
+*.db-shm
+*.db-wal
